@@ -1,9 +1,10 @@
-import { HardhatUserConfig } from 'hardhat/config';
-import '@nomicfoundation/hardhat-toolbox';
-import * as dotenv from 'dotenv';
-dotenv.config();
+// hardhat.config.js  (CommonJS)
+require('dotenv').config();
+require('ts-node/register'); // TSの scripts/*.ts を実行するため
+require('@nomicfoundation/hardhat-toolbox');
+require('./tasks/launchpad');
 
-const config: HardhatUserConfig = {
+module.exports = {
   solidity: {
     version: '0.8.25',
     settings: { optimizer: { enabled: true, runs: 200 } },
@@ -19,5 +20,3 @@ const config: HardhatUserConfig = {
     },
   },
 };
-
-export default config;
