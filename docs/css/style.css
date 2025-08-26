@@ -1,0 +1,337 @@
+/* ===== Design tokens ===== */
+:root {
+  --bg: #0f1115;
+  --panel: #161a22;
+  --panel-2: #1b2130;
+  --text: #e8eef9;
+  --muted: #aab6cc;
+  --accent: #7ee0b5;
+  --accent-2: #2dd4bf;
+  --danger: #ff6b6b;
+  --ring: #2b3347;
+  --radius: 14px;
+  --orange1: #ffb86b;
+  --orange2: #ff7a32;
+}
+
+/* ===== Base ===== */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a {
+  color: #9ad7ff;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.wrap {
+  width: 100%;
+  max-width: 760px;
+  margin: 24px auto 64px;
+  padding: 0 16px;
+}
+
+/* ===== Header ===== */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 18px;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #78f3b9;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  color: #cfe7ff;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+/* 補助リンク（テキストリンク風ボタン） */
+.link-like {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #9ad7ff;
+  padding: 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link-like:hover {
+  text-decoration: underline;
+}
+
+/* ===== Cards / layout ===== */
+.card {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--ring);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  padding: 18px;
+  margin: 14px 0;
+}
+.card h2 {
+  margin: 2px 0 10px;
+  font-size: 22px;
+}
+.grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+/* Info box */
+.box {
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 72px;
+}
+.box h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+}
+.muted {
+  color: var(--muted);
+}
+.ok {
+  color: #79f7c6;
+}
+.danger {
+  color: var(--danger);
+}
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+.foot {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Buttons & inputs */
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
+  color: #06251d;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-alt {
+  border: 1px solid var(--ring);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+.btn.orange {
+  background: linear-gradient(180deg, var(--orange1) 0%, var(--orange2) 100%);
+  color: #2b1400;
+  box-shadow: 0 6px 18px rgba(255, 122, 50, 0.28);
+}
+input[type='text'],
+input[type='number'] {
+  width: 100%;
+  border: 1px solid var(--ring);
+  background: #0f1320;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  outline: none;
+}
+
+.subttl {
+  margin: 18px 4px 8px;
+  font-weight: 700;
+  color: #d7e6ff;
+}
+.tight {
+  margin-top: 8px;
+}
+.space-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 長い英数字列を気持ちよく折り返し */
+.mono,
+.long {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+/* 1行で省略したいとき */
+.truncate {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* hidden 属性の保険 */
+[hidden] {
+  display: none !important;
+}
+/* === Countdown === */
+.cd-rings {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+  gap: 16px;
+  justify-items: center;
+  margin: 8px 0 10px;
+}
+.cd-item {
+  text-align: center;
+}
+
+.cd-ring {
+  --size: 92px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 999px;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--ring) 0);
+  display: grid;
+  place-items: center;
+  position: relative;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+.cd-ring::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+.cd-num {
+  position: relative;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.cd-lab {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.cd-cta {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 12px;
+}
+.cd-prog {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--ring);
+  overflow: hidden;
+}
+.cd-prog-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) inset;
+  transition: width 0.6s ease;
+}
+/* Buy nowで誘導するときの軽いハイライト */
+.glow {
+  box-shadow: 0 0 0 3px rgba(255, 122, 50, 0.45),
+    0 0 0 8px rgba(255, 122, 50, 0.15);
+  transition: box-shadow 0.25s;
+}
+
+/* モバイル微調整 */
+@media (max-width: 480px) {
+  .cd-ring {
+    --size: 80px;
+  }
+  .cd-num {
+    font-size: 20px;
+  }
+  .cd-rings {
+    gap: 12px;
+  }
+}
+
+/* ===== Mobile tweaks ===== */
+@media (max-width: 480px) {
+  .wrap {
+    padding: 0 12px;
+  }
+  .box {
+    padding: 12px;
+  }
+  .mono {
+    font-size: 14px;
+  }
+  .row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .row .btn {
+    width: 100%;
+  }
+  .brand-right {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+}

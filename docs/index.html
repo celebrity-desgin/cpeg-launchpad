@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CPEG Launchpad</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
+    <meta name="color-scheme" content="dark light" />
+    <link href="img/favicon.ico" rel="shortcut icon" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="./css/style.css?v=1" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="brand">
+        <div class="brand-left">
+          <span class="brand-bullet"></span>
+          <h1>CPEG Launchpad</h1>
+        </div>
+        <div class="brand-right">
+          <button id="connect" class="btn orange">Connect Wallet</button>
+          <button id="disconnectHeader" class="btn btn-alt" hidden>
+            Disconnect
+          </button>
+          <a
+            id="openInMM"
+            class="link-like"
+            style="display: none"
+            href="#"
+            rel="noopener"
+          >
+            Open in MetaMask
+          </a>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>Copper Peg Coin (CPEG) Presale</h2>
+        <p class="muted tight">
+          USDC を使って CPEG
+          を購入できます。販売期間内のみ購入可能です。ウォレットを
+          <strong>Sepolia</strong> に切り替えて接続してください。
+        </p>
+
+        <div class="subttl">現在の情報</div>
+        <div class="grid">
+          <div class="box">
+            <h3>Phase</h3>
+            <div id="phase" class="mono">-</div>
+            <div class="hint">now: <span id="now" class="mono">-</span></div>
+          </div>
+          <div class="box">
+            <h3>Price (USDC)</h3>
+            <div class="mono"><span id="price">-</span></div>
+            <div class="hint">per 1 CPEG (18d)</div>
+          </div>
+          <div class="box">
+            <h3>Window</h3>
+            <div class="mono">
+              <span id="st">--</span> → <span id="et">--</span>
+            </div>
+          </div>
+
+          <div class="box">
+            <h3>LP&nbsp;USDC</h3>
+            <div class="mono" id="lpUsdc">-</div>
+          </div>
+          <div class="box">
+            <h3>LP&nbsp;Token</h3>
+            <div class="mono long" id="lpTok">-</div>
+          </div>
+          <div class="box">
+            <h3>Funds Wallet</h3>
+            <div class="mono long" id="funds">-</div>
+          </div>
+        </div>
+
+        <div class="subttl">トークンについて</div>
+        <p class="muted tight">
+          CPEG は 18 桁小数の ERC-20 トークンです。販売 UI
+          はスマートコントラクト
+          <span id="lpAddr" class="mono">-</span>
+          と直接やり取りします。価格・期間・回収等はコントラクトの状態をそのまま表示しています。
+        </p>
+      </section>
+
+      <section class="card" id="cdWrap" aria-live="polite">
+        <h2 id="cdHeading">Token sale schedule</h2>
+
+        <div class="cd-rings">
+          <div class="cd-item">
+            <div class="cd-ring" id="cdDaysRing" style="--p: 100">
+              <div class="cd-num" id="cdDays">0</div>
+            </div>
+            <div class="cd-lab">days</div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-ring" id="cdHoursRing" style="--p: 0">
+              <div class="cd-num" id="cdHours">0</div>
+            </div>
+            <div class="cd-lab">hours</div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-ring" id="cdMinsRing" style="--p: 0">
+              <div class="cd-num" id="cdMins">0</div>
+            </div>
+            <div class="cd-lab">minutes</div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-ring" id="cdSecsRing" style="--p: 0">
+              <div class="cd-num" id="cdSecs">0</div>
+            </div>
+            <div class="cd-lab">seconds</div>
+          </div>
+        </div>
+
+        <div class="cd-cta">
+          <button id="cdAction" class="btn">Buy now</button>
+        </div>
+
+        <div class="cd-prog">
+          <div class="cd-prog-bar" id="cdProgBar" style="width: 0%"></div>
+        </div>
+
+        <div class="hint tight">
+          Window: <span id="cdSt">--</span> → <span id="cdEt">--</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Buy CPEG</h2>
+        <div class="box">
+          <div class="space-between">
+            <div class="mono long" id="addr">未接続</div>
+            <button id="disconnect" class="btn btn-alt" hidden>
+              Disconnect
+            </button>
+          </div>
+          <div class="hint tight">Network: <span id="net">Sepolia</span></div>
+        </div>
+
+        <div class="box">
+          <h3>USDC</h3>
+          <div class="row">
+            <input
+              id="usdcIn"
+              type="number"
+              inputmode="decimal"
+              placeholder="50"
+              min="0"
+              step="1"
+            />
+            <button id="buy" class="btn" disabled>Buy</button>
+          </div>
+          <div class="hint tight">
+            見積: <span id="quote" class="mono">0.0</span> CPEG
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="box">
+            <h3>My CPEG</h3>
+            <div id="myCpeg" class="mono">-</div>
+          </div>
+          <div class="box">
+            <h3>My USDC</h3>
+            <div id="myUsdc" class="mono">-</div>
+          </div>
+          <div class="box">
+            <h3>Allowance to LP</h3>
+            <div id="allow" class="mono">-</div>
+          </div>
+        </div>
+
+        <p class="hint tight">
+          トランザクションは Etherscan で確認できます。<br />
+          Approve → Buy の 2 段階で進みます（必要な金額のみ承認）。
+        </p>
+
+        <div id="msg" class="mono"></div>
+      </section>
+
+      <div class="foot">© <span id="year"></span> Copper Peg Coin</div>
+    </div>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2/dist/style.css"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.umd.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2/dist/index.umd.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"
+    ></script>
+    <script defer src="./js/app.js?v=1"></script>
+  </body>
+</html>
