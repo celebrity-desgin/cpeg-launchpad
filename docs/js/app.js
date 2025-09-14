@@ -1,11 +1,11 @@
 // app.js (drop-in with WalletConnect fallback + countdown + mobile Safari private handling)
 (function () {
-  // ====== 環境設定 ======
+  // ====== 環境設定（MAINNET） ======
   const RAW = {
-    LP: '0xd27131870F189249F9C7F57E985486a0568F64EF',
-    USDC: '0x75DbbF6459Acf142f6b89f5456aB5f41dCeddBa8',
-    CHAIN_HEX: '0xaa36a7', // Sepolia
-    EXPLORER: 'https://sepolia.etherscan.io',
+    LP: '0xa7c8c000c96500a165c5220dC11e40ceAA68aE4A', // Launchpad (mainnet)
+    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC (mainnet)
+    CHAIN_HEX: '0x1', // Ethereum Mainnet
+    EXPLORER: 'https://etherscan.io',
   };
 
   // ====== Countdown ======
@@ -130,13 +130,13 @@
 
   // ====== WalletConnect ======
   const WC_PROJECT_ID = 'ec38e25956dbbbc960565c4daf1a0730';
-  const SEPOLIA_ID = 11155111;
+  const MAINNET_ID = 1;
 
-  // ====== 読み取りRPC ======
+  // ====== 読み取りRPC（MainnetのパブリックRPC。必要なら順番を変えてOK）======
   const READ_RPCS = [
-    'https://rpc.sepolia.org',
-    'https://1rpc.io/sepolia',
-    'https://endpoints.omniatech.io/v1/eth/sepolia/public',
+    'https://1rpc.io/eth',
+    'https://ethereum.publicnode.com',
+    'https://rpc.ankr.com/eth',
   ];
 
   let rpcIndex = 0;
@@ -362,16 +362,17 @@
   }
   showMMDeepLink(false);
 
-  // ====== チェーン切替 ======
-  async function ensureSepolia(prov) {
+  // ====== チェーン切替（Mainnet） ======
+  async function ensureMainnet(prov) {
     const p = prov || reqProv || window.ethereum;
     if (!p) throw new Error('ウォレットが見つかりません');
+
     const chainId = await p.request({ method: 'eth_chainId' });
-    if (chainId !== CHAIN_HEX) {
+    if (chainId !== RAW.CHAIN_HEX) {
       try {
         await p.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: CHAIN_HEX }],
+          params: [{ chainId: RAW.CHAIN_HEX }],
         });
       } catch (e) {
         if (e.code === 4902) {
@@ -379,15 +380,11 @@
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: CHAIN_HEX,
-                chainName: 'Sepolia',
-                nativeCurrency: {
-                  name: 'SepoliaETH',
-                  symbol: 'SEP',
-                  decimals: 18,
-                },
+                chainId: RAW.CHAIN_HEX,
+                chainName: 'Ethereum',
+                nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
                 rpcUrls: READ_RPCS,
-                blockExplorerUrls: [EXPLORER],
+                blockExplorerUrls: [RAW.EXPLORER],
               },
             ],
           });
@@ -405,12 +402,12 @@
 
       if (window.ethereum) {
         reqProv = window.ethereum;
-        await ensureSepolia(reqProv);
+        await ensureMainnet(reqProv);
         provider = new ethers.BrowserProvider(reqProv, 'any');
         signer = await provider.getSigner();
         me = await signer.getAddress();
         $('addr').textContent = me;
-        $('net').textContent = 'Sepolia';
+        $('net').textContent = 'Ethereum';
         setConnUI(true);
         await refresh(true);
         return;
@@ -439,9 +436,9 @@
 
       wcProvider = await window.EthereumProvider.init({
         projectId: WC_PROJECT_ID,
-        chains: [SEPOLIA_ID],
+        chains: [MAINNET_ID],
         showQrModal: true,
-        rpcMap: { [SEPOLIA_ID]: READ_RPCS[0] },
+        rpcMap: { [MAINNET_ID]: READ_RPCS[0] },
         optionalMethods: [
           'eth_signTypedData',
           'personal_sign',
@@ -461,7 +458,7 @@
       reqProv = wcProvider;
 
       try {
-        await ensureSepolia(reqProv);
+        await ensureMainnet(reqProv);
       } catch (e) {
         console.warn(e);
       }
@@ -471,7 +468,7 @@
       me = await signer.getAddress();
 
       $('addr').textContent = me;
-      $('net').textContent = 'Sepolia';
+      $('net').textContent = 'Ethereum';
       setConnUI(true);
       await refresh(true);
 
@@ -496,7 +493,7 @@
     try {
       $('msg').textContent = '';
       if (!signer) throw new Error('先にウォレットを接続してください');
-      await ensureSepolia(reqProv);
+      await ensureMainnet(reqProv);
 
       const input = $('usdcIn').value || '0';
       const amount = ethers.parseUnits(input, 6);
@@ -544,7 +541,7 @@
     } catch {}
     provider = new ethers.JsonRpcProvider(READ_RPCS[0]);
     $('addr').textContent = '未接続';
-    $('net').textContent = 'Sepolia';
+    $('net').textContent = 'Ethereum';
     setConnUI(false);
   }
 
