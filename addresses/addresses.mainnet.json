@@ -1,12 +1,12 @@
 {
   "chainId": 1,
-  "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
   "CPEG": "0x4D8d6337d71ab6B55208Cb553365501770deD79",
-  "Launchpad": "0xa7cBc000c96500a165c5220dC11e40CeaA68aE4A",
-  "FundsWallet": "0xeDF82738785a4C4U45f81fDC2ACb6ECF9Eee35Ee0",
+  "Launchpad": "0xBdF1AeF237CdefdBd406831d408aE33ACD9E7fC0",
+  "FundsWallet": "0x71610249f0e49e79092493C670aFf60E4A44fF19",
   "sale": {
-    "start": 1757602800,
-    "end": 1759044399,
+    "start": 1758294000,
+    "end": 1759244399,
     "capUSDC": 0
   }
 }

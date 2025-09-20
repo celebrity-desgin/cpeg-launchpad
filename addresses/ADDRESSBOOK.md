@@ -4,11 +4,11 @@
 
 ## Mainnet Addresses
 
-- Token (CPEG): `0x04b8d6...0deD79` (18 decimals) — [Etherscan](https://etherscan.io/token/0x04b8d6...0deD79)
-- Launchpad: `0xa7cBc0...8aE4A` — [Etherscan](https://etherscan.io/address/0xa7cBc0...8aE4A#code)
-- USDC: `0xA0b8...6eB48`
+- Token (CPEG): `0xd4B8d6337d71ab6B55208Cb553365501770deD79` (18 decimals) — [Etherscan](https://etherscan.io/address/0xd4b8d6337d71ab6b55208cb553365501770ded79)
+- Launchpad: `0xBdF1AeF237CdefdBd406831d408aE33ACD9E7fC0` — [Etherscan](https://etherscan.io/address/0xBdF1AeF237CdefdBd406831d408aE33ACD9E7fC0)
+- USDT: `0xdAC17F958D2ee523a2206206994597C13D831ec7`
 
-Window: 2025-09-12 00:00:00 → 2025-09-28 16:26:39 (UTC)  
+Window: 2025-09-20 00:00:00 → 2025-09-30 23:59:59 (UTC)  
 Price: 0.35 USDC / CPEG
 
 ## Local dev
