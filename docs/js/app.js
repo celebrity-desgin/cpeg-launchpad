@@ -1,195 +1,50 @@
-// app.js (drop-in with WalletConnect fallback + countdown + mobile Safari private handling)
+// app.js — CPEG Launchpad (MetaMask + Countdown + USDT only, robust)
+// ethers v6
+
 (function () {
-  // ====== 環境設定（MAINNET） ======
+  // ====== Config ======
   const RAW = {
-    LP: '0xa7c8c000c96500a165c5220dC11e40ceAA68aE4A', // Launchpad (mainnet)
-    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC (mainnet)
-    CHAIN_HEX: '0x1', // Ethereum Mainnet
+    // Launchpad コントラクト
+    LP: '0xBdF1AeF237CdefdBd406831d408aE33ACD9E7fC0',
+    // USDT (Ethereum Mainnet)
+    USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    CHAIN_HEX: '0x1',
     EXPLORER: 'https://etherscan.io',
+
+    // ★テスト用（本番は 1000n * 10n ** 6n に戻す）
+    MIN_BUY_USDT: 10n * 10n ** 6n, // 10 USDT
   };
 
-  // ====== Countdown ======
-  let cdTimer = null;
-  const two = (n) => n.toString().padStart(2, '0');
-
-  function startCountdown(st, et) {
-    const stD = new Date(Number(st) * 1000);
-    const etD = new Date(Number(et) * 1000);
-
-    const cdStEl = document.getElementById('cdSt');
-    if (cdStEl) cdStEl.textContent = stD.toLocaleString();
-    const cdEtEl = document.getElementById('cdEt');
-    if (cdEtEl) cdEtEl.textContent = etD.toLocaleString();
-
-    if (cdTimer) {
-      clearInterval(cdTimer);
-      cdTimer = null;
-    }
-
-    const total = Math.max(0, Number(et) - Number(st));
-
-    const tick = () => {
-      const now = Math.floor(Date.now() / 1000);
-      let mode = 'ended',
-        target = et;
-      if (now < st) {
-        mode = 'starts';
-        target = st;
-      } else if (now <= et) {
-        mode = 'ends';
-        target = et;
-      }
-
-      const left = Math.max(0, target - now);
-      const d = Math.floor(left / 86400);
-      const h = Math.floor((left % 86400) / 3600);
-      const m = Math.floor((left % 3600) / 60);
-      const s = left % 60;
-
-      const head = document.getElementById('cdHeading');
-      if (head)
-        head.textContent =
-          mode === 'starts'
-            ? 'Sale starts in'
-            : mode === 'ends'
-            ? 'Sale ends in'
-            : 'Sale ended';
-
-      const setText = (id, v) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = v;
-      };
-      setText('cdDays', d);
-      setText('cdHours', two(h));
-      setText('cdMins', two(m));
-      setText('cdSecs', two(s));
-
-      const setP = (id, p) => {
-        const el = document.getElementById(id);
-        if (el) el.style.setProperty('--p', String(p));
-      };
-      setP('cdDaysRing', 100);
-      setP('cdHoursRing', (h / 24) * 100);
-      setP('cdMinsRing', (m / 60) * 100);
-      setP('cdSecsRing', (s / 60) * 100);
-
-      let prog = 0;
-      if (mode === 'starts') prog = 0;
-      else if (mode === 'ends') prog = total ? ((now - st) / total) * 100 : 0;
-      else prog = 100;
-      const bar = document.getElementById('cdProgBar');
-      if (bar) bar.style.width = `${Math.min(100, Math.max(0, prog))}%`;
-    };
-
-    tick();
-    cdTimer = setInterval(tick, 1000);
-  }
-
-  // === Buy-now（カウントダウンのCTA） ===
-  function updateCtaState(phase) {
-    const cdBtn = document.getElementById('cdAction');
-    if (!cdBtn) return;
-    let label = 'Buy now';
-    let disabled = false;
-
-    if (!me) label = 'Connect Wallet';
-    if (phase === 'PRE') {
-      label = 'Starts soon';
-      disabled = true;
-    }
-    if (phase === 'ENDED') {
-      label = 'Sale ended';
-      disabled = true;
-    }
-
-    cdBtn.textContent = label;
-    cdBtn.disabled = disabled;
-  }
-
-  // クリック挙動（※二重リスナーは付けない）
-  document.getElementById('cdAction')?.addEventListener('click', () => {
-    const connBtn = document.getElementById('connect');
-    const inEl = document.getElementById('usdcIn');
-    const buyEl = document.getElementById('buy');
-
-    if (!me) {
-      connBtn?.click();
-      return;
-    }
-
-    const val = Number(inEl?.value || 0);
-    if (!val) {
-      inEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      inEl?.classList.add('glow');
-      setTimeout(() => inEl?.classList.remove('glow'), 1200);
-      inEl?.focus();
-      return;
-    }
-    buyEl?.click();
-  });
-
-  // ====== WalletConnect ======
-  const WC_PROJECT_ID = 'ec38e25956dbbbc960565c4daf1a0730';
-  const MAINNET_ID = 1;
-
-  // ====== 読み取りRPC（MainnetのパブリックRPC。必要なら順番を変えてOK）======
+  // 読み取り用 RPC（不調時にローテーション）
   const READ_RPCS = [
-    'https://1rpc.io/eth',
     'https://ethereum.publicnode.com',
     'https://rpc.ankr.com/eth',
+    'https://1rpc.io/eth',
+    'https://cloudflare-eth.com',
   ];
 
-  let rpcIndex = 0;
-  let provider = new ethers.JsonRpcProvider(READ_RPCS[rpcIndex]); // 読み取り用
-  let signer = null;
-  let me = null;
-
-  let reqProv = null; // 実コール用 EIP-1193
-  let wcProvider = null; // WalletConnect provider
-
-  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-  const rotateReader = () => {
-    rpcIndex = (rpcIndex + 1) % READ_RPCS.length;
-    provider = new ethers.JsonRpcProvider(READ_RPCS[rpcIndex]);
+  // ====== Helpers ======
+  const $ = (id) => document.getElementById(id);
+  const byId = (id) => document.getElementById(id);
+  const getInEl = () => byId('usdtIn') || byId('usdcIn'); // 互換
+  const setTxt = (id, v) => {
+    const el = $(id);
+    if (el) el.textContent = v;
   };
 
-  // 住所正規化
-  const norm = (_label, a) => {
-    const clean = (a ?? '').trim();
+  const norm = (a) => {
     try {
-      return ethers.getAddress(clean.toLowerCase());
+      return ethers.getAddress((a || '').toLowerCase());
     } catch {
-      return clean;
+      return a;
     }
   };
+  const LP_ADDR = norm(RAW.LP);
+  const USDT_ADDR = norm(RAW.USDT);
 
-  const LP_ADDR = norm('LP', RAW.LP);
-  const USDC_ADDR = norm('USDC', RAW.USDC);
-  const CHAIN_HEX = RAW.CHAIN_HEX;
-  const EXPLORER = RAW.EXPLORER;
-
-  // ====== ABIs ======
-  const LP_ABI = [
-    'function priceUSDC() view returns (uint256)',
-    'function startTime() view returns (uint256)',
-    'function endTime() view returns (uint256)',
-    'function cap() view returns (uint256)',
-    'function token() view returns (address)',
-    'function fundsWallet() view returns (address)',
-    'function buyWithUSDC(uint256)',
-  ];
-  const ERC20_ABI = [
-    'function decimals() view returns (uint8)',
-    'function symbol() view returns (string)',
-    'function balanceOf(address) view returns (uint256)',
-    'function allowance(address,address) view returns (uint256)',
-    'function approve(address,uint256) returns (bool)',
-  ];
-
-  // ====== util（表示） ======
-  const $ = (id) => document.getElementById(id);
-
-  function roundStrDecimal(s, dp) {
+  // 表示フォーマッタ
+  const addThousands = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const roundStrDecimal = (s, dp) => {
     const [iRaw, fRaw = ''] = s.split('.');
     if (dp <= 0) return iRaw;
     if (fRaw.length <= dp) {
@@ -199,174 +54,271 @@
     const cut = fRaw.slice(0, dp);
     const next = fRaw[dp];
     let carry = next >= '5' ? 1 : 0;
-    let fracArr = cut
-      .split('')
-      .reverse()
-      .map((d) => +d);
-    for (let k = 0; k < fracArr.length && carry; k++) {
-      const x = fracArr[k] + carry;
+    let frac = [...cut].reverse().map((d) => +d);
+    for (let k = 0; k < frac.length && carry; k++) {
+      const x = frac[k] + carry;
       if (x >= 10) {
-        fracArr[k] = x - 10;
+        frac[k] = x - 10;
         carry = 1;
       } else {
-        fracArr[k] = x;
+        frac[k] = x;
         carry = 0;
       }
     }
-    let i = iRaw;
-    let f = fracArr.reverse().join('');
+    let i = iRaw,
+      f = frac.reverse().join('');
     if (carry) i = (BigInt(iRaw) + 1n).toString();
     f = f.replace(/0+$/, '');
     return f ? `${i}.${f}` : i;
-  }
-  const addThousands = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-  function fmtAmount(v, decimals, dp) {
-    const s = ethers.formatUnits(v, decimals);
-    const rounded = roundStrDecimal(s, dp);
-    const [i, f = ''] = rounded.split('.');
-    const iw = addThousands(i);
-    return f ? `${iw}.${f}` : iw;
-  }
-
-  const fmtUSDC = (v) => fmtAmount(v, 6, 2);
-  const fmtPriceUSDC = (v) => fmtAmount(v, 6, 6);
-  const fmtCPEG = (v) => {
-    const n = Number(ethers.formatUnits(v, 18));
-    const dp = !Number.isFinite(n) ? 6 : Math.abs(n) >= 1 ? 4 : 6;
-    return fmtAmount(v, 18, dp);
   };
-  const fmtQuoteCPEG = (v) => fmtAmount(v, 18, 4);
+  const fmt = {
+    usdt: (v) => addThousands(roundStrDecimal(ethers.formatUnits(v, 6), 2)),
+    cpeg: (v) => {
+      const n = Number(ethers.formatUnits(v, 18));
+      const dp = !Number.isFinite(n) ? 6 : Math.abs(n) >= 1 ? 4 : 6;
+      return addThousands(roundStrDecimal(ethers.formatUnits(v, 18), dp));
+    },
+  };
 
-  // ====== 表示更新 ======
+  // ====== Ethers setup ======
+  let rpcIndex = 0;
+  let provider = new ethers.JsonRpcProvider(READ_RPCS[rpcIndex]); // 読み取り
+  let reqProv = null; // EIP-1193（MetaMask）
+  let signer = null; // 書き込み
+  let me = null; // 自分のアドレス
+  let myUsdtBal = null; // BigInt（不明なら null）
+  let priceCache = 0n; // 現在価格（18桁基準への換算用は不要、価格自体は6桁想定）
+
+  const rotateReader = () => {
+    rpcIndex = (rpcIndex + 1) % READ_RPCS.length;
+    provider = new ethers.JsonRpcProvider(READ_RPCS[rpcIndex]);
+  };
+
+  // ====== ABI（揺れに強く） ======
+  const LP_ABI = [
+    // 価格はどれかが存在すればOK
+    'function priceUSDT() view returns (uint256)',
+    'function priceUSDC() view returns (uint256)',
+    'function price() view returns (uint256)',
+
+    'function token() view returns (address)',
+
+    // 販売期間（uint64/uint256 どちらでも拾えるように）
+    'function window() view returns (uint256 start, uint256 end)',
+    'function startTime() view returns (uint256)',
+    'function endTime() view returns (uint256)',
+
+    // 購入関数（どちらかが存在）
+    'function buyWithUSDT(uint256)',
+    'function buyWithUSDC(uint256)',
+  ];
+  const ERC20_ABI = [
+    'function balanceOf(address) view returns (uint256)',
+    'function allowance(address,address) view returns (uint256)',
+    'function approve(address,uint256) returns (bool)',
+  ];
+
+  // ====== Countdown ======
+  let cdTimer = null;
+  const two = (n) => n.toString().padStart(2, '0');
+
+  function startCountdown(st, et) {
+    const stD = new Date(Number(st) * 1000);
+    const etD = new Date(Number(et) * 1000);
+    setTxt('cdSt', stD.toLocaleString());
+    setTxt('cdEt', etD.toLocaleString());
+
+    if (cdTimer) {
+      clearInterval(cdTimer);
+      cdTimer = null;
+    }
+
+    const tick = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const target = now < st ? st : et;
+      const left = Math.max(0, target - now);
+
+      const d = Math.floor(left / 86400);
+      const h = Math.floor((left % 86400) / 3600);
+      const m = Math.floor((left % 3600) / 60);
+      const s = left % 60;
+
+      setTxt('cdDays', d);
+      setTxt('cdHours', two(h));
+      setTxt('cdMins', two(m));
+      setTxt('cdSecs', two(s));
+    };
+    tick();
+    cdTimer = setInterval(tick, 1000);
+  }
+
+  // ====== 価格/期間の堅牢取得 ======
+  async function readPrice(lp) {
+    let p = 0n;
+    try {
+      p = await lp.priceUSDT();
+    } catch {}
+    if (p === 0n) {
+      try {
+        p = await lp.priceUSDC();
+      } catch {}
+    }
+    if (p === 0n) {
+      try {
+        p = await lp.price();
+      } catch {}
+    }
+    return p;
+  }
+
+  async function readSaleWindow(lp) {
+    try {
+      const w = await lp.window();
+      const st = BigInt(w.start ?? w[0] ?? 0);
+      const et = BigInt(w.end ?? w[1] ?? 0);
+      if (st && et) return [st, et];
+    } catch {}
+    try {
+      const st = BigInt(await lp.startTime());
+      const et = BigInt(await lp.endTime());
+      if (st && et) return [st, et];
+    } catch {}
+    return [0n, 0n];
+  }
+
+  // ====== 見積 & BUY ボタン活性判定 ======
+  function updateQuote(price6) {
+    const inp = getInEl();
+    if (!inp) return;
+    try {
+      const input = (inp.value || '0').trim();
+      const usdt = ethers.parseUnits(input, 6);
+      if (usdt <= 0n || !price6 || price6 === 0n) {
+        setTxt('quote', '-');
+        return;
+      }
+      // CPEG out = USDT(6) * 1e18 / price(6)
+      const out = (usdt * 10n ** 18n) / price6;
+      setTxt('quote', fmt.cpeg(out));
+      const el = $('quote');
+      if (el) el.title = ethers.formatUnits(out, 18);
+    } catch {
+      setTxt('quote', '-');
+    }
+  }
+
+  function parseAmount() {
+    const inp = getInEl();
+    if (!inp) return 0n;
+    try {
+      return ethers.parseUnits((inp.value || '0').trim(), 6);
+    } catch {
+      return 0n;
+    }
+  }
+
+  function updateBuyButton(live) {
+    const btn = $('buy');
+    if (!btn) return;
+    try {
+      if (!signer || !live || priceCache <= 0n) {
+        btn.disabled = true;
+        return;
+      }
+      const amt = parseAmount();
+      if (amt < RAW.MIN_BUY_USDT) {
+        btn.disabled = true;
+        return;
+      }
+      if (myUsdtBal != null && amt > myUsdtBal) {
+        btn.disabled = true;
+        return;
+      }
+      btn.disabled = false;
+    } catch {
+      btn.disabled = true;
+    }
+  }
+
+  // ====== UI Toggle ======
+  function showConnectedUI(addr, usdtBal) {
+    const tb = $('tb');
+    const connectBtn = $('connect');
+    if (tb) tb.style.display = 'flex';
+    if (connectBtn) connectBtn.style.display = 'none';
+
+    if (addr) {
+      const short = addr.slice(0, 6) + '…' + addr.slice(-4);
+      setTxt('tbAddr', short);
+    }
+    if (typeof usdtBal !== 'undefined') {
+      setTxt('tbUsdt', `${fmt.usdt(usdtBal)} USDT`);
+    }
+    const dis = $('disconnectHeader');
+    if (dis) dis.hidden = false;
+  }
+
+  function showDisconnectedUI() {
+    const tb = $('tb');
+    const connectBtn = $('connect');
+    if (tb) tb.style.display = 'none';
+    if (connectBtn) connectBtn.style.display = 'inline-flex';
+    const dis = $('disconnectHeader');
+    if (dis) dis.hidden = true;
+  }
+
+  // ====== Refresh（チェーン状態を読む） ======
   async function refresh(readSigner = false) {
     try {
       const pvd = readSigner && signer ? signer : provider;
+
       const lp = new ethers.Contract(LP_ADDR, LP_ABI, pvd);
-      const usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, pvd);
+      const usdt = new ethers.Contract(USDT_ADDR, ERC20_ABI, pvd);
 
-      const [price, st, et, tokAddr, fw] = await Promise.all([
-        lp.priceUSDC(),
-        lp.startTime(),
-        lp.endTime(),
-        lp.token(),
-        lp.fundsWallet(),
-      ]);
+      // 価格
+      priceCache = await readPrice(lp);
+      updateQuote(priceCache);
 
-      // カウントダウンを起動/更新
-      startCountdown(Number(st), Number(et));
+      // 期間
+      const [st, et] = await readSaleWindow(lp);
+      if (st && et) startCountdown(Number(st), Number(et));
 
-      const nowTs = Math.floor(Date.now() / 1000);
-      const phase = nowTs < st ? 'PRE' : nowTs <= et ? 'LIVE' : 'ENDED';
+      // ライブ判定
+      const now = Math.floor(Date.now() / 1000);
+      const live = st && et ? now >= Number(st) && now <= Number(et) : false;
 
-      const tokenRO = new ethers.Contract(
-        tokAddr,
-        ['function balanceOf(address) view returns (uint256)'],
-        pvd
-      );
-      const [lpUsdc, lpTok] = await Promise.all([
-        usdc.balanceOf(LP_ADDR),
-        tokenRO.balanceOf(LP_ADDR),
-      ]);
-
-      $('phase').textContent = phase;
-      $('now').textContent = new Date(nowTs * 1000).toLocaleString();
-      $('price').textContent = fmtPriceUSDC(price);
-      $('st').textContent = new Date(Number(st) * 1000).toLocaleString();
-      $('et').textContent = new Date(Number(et) * 1000).toLocaleString();
-      $('lpUsdc').textContent = fmtUSDC(lpUsdc);
-      $('lpTok').textContent = fmtCPEG(lpTok);
-      $('funds').textContent = fw;
-      $('lpAddr').textContent = LP_ADDR;
-
-      updateQuote(price);
-      updateCtaState(phase); // ← ここでCTAを更新
-
+      // 接続済みなら残高を更新
       if (me) {
-        const [myU, myT, alw] = await Promise.all([
-          usdc.balanceOf(me),
-          tokenRO.balanceOf(me),
-          usdc.allowance(me, LP_ADDR),
-        ]);
-        $('myUsdc').textContent = fmtUSDC(myU);
-        $('myCpeg').textContent = fmtCPEG(myT);
-        $('allow').textContent = fmtUSDC(alw);
+        try {
+          myUsdtBal = await usdt.balanceOf(me);
+        } catch {
+          myUsdtBal = null;
+        }
+        showConnectedUI(me, myUsdtBal ?? 0n);
       }
 
-      $('buy').disabled = phase !== 'LIVE' || !signer;
-      $('msg').textContent = '';
+      updateBuyButton(live);
+      setTxt('msg', '');
     } catch (e) {
       console.error('[refresh] failed', e);
-      $('msg').innerHTML = `<span class="danger">Refresh error:</span> ${
-        e?.shortMessage || e?.message || e
-      }`;
-      if (String(e?.message || e).match(/fetch|network|timeout|429/i)) {
+      const el = $('msg');
+      if (el)
+        el.innerHTML = `<span class="danger">Refresh error:</span> ${
+          e?.shortMessage || e?.message || e
+        }`;
+      if (
+        String(e?.message || e).match(/fetch|network|timeout|429|coalesce/i)
+      ) {
         rotateReader();
-        setTimeout(() => refresh(readSigner).catch(() => {}), 900);
+        setTimeout(() => refresh(readSigner).catch(() => {}), 800);
       }
     }
   }
 
-  function updateQuote(priceUSDC) {
-    try {
-      const input = $('usdcIn').value || '0';
-      const usdc = ethers.parseUnits(input, 6);
-      if (usdc === 0n || priceUSDC === 0n) {
-        $('quote').textContent = '-';
-        return;
-      }
-      const out = (usdc * 10n ** 18n) / priceUSDC;
-      $('quote').textContent = `≈ ${fmtQuoteCPEG(out)}`;
-      $('quote').title = ethers.formatUnits(out, 18);
-    } catch {
-      $('quote').textContent = '-';
-    }
-  }
-
-  $('usdcIn').addEventListener('input', async () => {
-    try {
-      const lp = new ethers.Contract(LP_ADDR, LP_ABI, provider);
-      const price = await lp.priceUSDC();
-      updateQuote(price);
-    } catch {}
-  });
-
-  // UI切替
-  function setConnUI(connected) {
-    const connBtn = document.getElementById('connect');
-    const discBtn = document.getElementById('disconnect');
-    const discHdr = document.getElementById('disconnectHeader');
-    if (connBtn) connBtn.hidden = connected;
-    if (discBtn) discBtn.hidden = !connected;
-    if (discHdr) discHdr.hidden = !connected;
-  }
-
-  // ====== Safariプライベート対策 & DeepLink ======
-  function canUseLocalStorage() {
-    try {
-      localStorage.setItem('__wc_test__', '1');
-      localStorage.removeItem('__wc_test__');
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  const mmBtn = document.getElementById('openInMM');
-  function showMMDeepLink(show) {
-    if (!mmBtn) return;
-    const dappPath = `${location.host}${location.pathname}${
-      location.search || ''
-    }`;
-    mmBtn.href = `https://metamask.app.link/dapp/${dappPath}`;
-    mmBtn.style.display = show ? 'inline-flex' : 'none';
-  }
-  showMMDeepLink(false);
-
-  // ====== チェーン切替（Mainnet） ======
+  // ====== Chain helpers ======
   async function ensureMainnet(prov) {
     const p = prov || reqProv || window.ethereum;
-    if (!p) throw new Error('ウォレットが見つかりません');
-
+    if (!p) throw new Error('Wallet not found. Please enable MetaMask.');
     const chainId = await p.request({ method: 'eth_chainId' });
     if (chainId !== RAW.CHAIN_HEX) {
       try {
@@ -375,7 +327,7 @@
           params: [{ chainId: RAW.CHAIN_HEX }],
         });
       } catch (e) {
-        if (e.code === 4902) {
+        if (e && e.code === 4902) {
           await p.request({
             method: 'wallet_addEthereumChain',
             params: [
@@ -395,190 +347,202 @@
     }
   }
 
-  // ====== Connect（拡張優先 → WalletConnect） ======
-  $('connect').onclick = async () => {
+  // MetaMask に確実につなぐ（英語メッセージ）
+  async function requestAccountsWithHints() {
+    const eth = window.ethereum;
+    if (!eth)
+      throw new Error('MetaMask not found. Please enable the 🦊 extension.');
+
     try {
-      showMMDeepLink(false);
-
-      if (window.ethereum) {
-        reqProv = window.ethereum;
-        await ensureMainnet(reqProv);
-        provider = new ethers.BrowserProvider(reqProv, 'any');
-        signer = await provider.getSigner();
-        me = await signer.getAddress();
-        $('addr').textContent = me;
-        $('net').textContent = 'Ethereum';
-        setConnUI(true);
-        await refresh(true);
-        return;
+      const accs = await eth.request({ method: 'eth_requestAccounts' });
+      if (!accs || accs.length === 0) {
+        throw new Error(
+          'No account returned. Open MetaMask, choose an account, then try again.'
+        );
       }
-
-      // PrivateモードなどでlocalStorage不可 → DeepLink案内
-      if (!canUseLocalStorage()) {
-        $(
-          'msg'
-        ).innerHTML = `<span class="danger">WalletConnect cannot start in Private mode.</span><br>通常タブで開くか、右上の「Open in MetaMask」をタップしてください。`;
-        showMMDeepLink(true);
-        return;
-      }
-
-      if (!window.EthereumProvider) {
-        $(
-          'msg'
-        ).innerHTML = `<span class="danger">WalletConnect script not loaded.</span>`;
-        showMMDeepLink(true);
-        return;
-      }
-
-      try {
-        await wcProvider?.disconnect?.();
-      } catch {}
-
-      wcProvider = await window.EthereumProvider.init({
-        projectId: WC_PROJECT_ID,
-        chains: [MAINNET_ID],
-        showQrModal: true,
-        rpcMap: { [MAINNET_ID]: READ_RPCS[0] },
-        optionalMethods: [
-          'eth_signTypedData',
-          'personal_sign',
-          'wallet_switchEthereumChain',
-          'wallet_addEthereumChain',
-        ],
-        optionalEvents: ['accountsChanged', 'chainChanged', 'disconnect'],
-        metadata: {
-          name: 'CPEG Launchpad',
-          description: 'Buy CPEG with USDC',
-          url: location.origin,
-          icons: [],
-        },
-      });
-
-      await wcProvider.connect();
-      reqProv = wcProvider;
-
-      try {
-        await ensureMainnet(reqProv);
-      } catch (e) {
-        console.warn(e);
-      }
-
-      provider = new ethers.BrowserProvider(wcProvider, 'any');
-      signer = await provider.getSigner();
-      me = await signer.getAddress();
-
-      $('addr').textContent = me;
-      $('net').textContent = 'Ethereum';
-      setConnUI(true);
-      await refresh(true);
-
-      wcProvider.on('accountsChanged', async (a) => {
-        me = (a && a[0]) || null;
-        $('addr').textContent = me || '未接続';
-        await refresh(!!me).catch(() => {});
-      });
-      wcProvider.on('chainChanged', () => location.reload());
-      wcProvider.on('disconnect', () => cleanupConnection());
+      return accs[0];
     } catch (e) {
-      console.error('[connect] failed', e);
-      $('msg').innerHTML = `<span class="danger">Connect error:</span> ${
-        e?.shortMessage || e?.message || e
-      }`;
-      if (isMobile) showMMDeepLink(true);
+      const code = e && e.code;
+      const msg = String(e?.message || e || '');
+      if (code === -32002)
+        throw new Error(
+          'A connection request is already pending. Click the 🦊 icon and approve it.'
+        );
+      if (code === 4001)
+        throw new Error(
+          'Connection was rejected. Please click “Connect Wallet” again.'
+        );
+      if (/locked|unlock/i.test(msg))
+        throw new Error(
+          'Please open MetaMask and unlock it (enter your password), then try again.'
+        );
+      throw new Error(msg);
     }
-  };
+  }
 
-  // ====== Buy ======
-  $('buy').onclick = async () => {
+  // ====== Connect / Disconnect ======
+  $('connect')?.addEventListener('click', async () => {
+    const msgEl = $('msg');
+    if (msgEl) msgEl.textContent = '';
     try {
-      $('msg').textContent = '';
-      if (!signer) throw new Error('先にウォレットを接続してください');
+      if (!window.ethereum)
+        throw new Error('MetaMask not found. Please install/enable it.');
+
+      reqProv = window.ethereum;
+
+      const first = await requestAccountsWithHints();
+      if (!first) throw new Error('No account selected.');
+
       await ensureMainnet(reqProv);
 
-      const input = $('usdcIn').value || '0';
-      const amount = ethers.parseUnits(input, 6);
-      if (amount <= 0n) throw new Error('USDC 金額を入力してください');
+      const br = new ethers.BrowserProvider(reqProv, 'any');
+      provider = br;
+      signer = await br.getSigner();
+      me = await signer.getAddress();
 
-      const lp = new ethers.Contract(LP_ADDR, LP_ABI, signer);
-      const usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, signer);
-
-      const cur = await usdc.allowance(me, LP_ADDR);
-      if (cur < amount) {
-        $('msg').textContent = 'Approving USDC...';
-        const txA = await usdc.approve(LP_ADDR, amount);
-        $(
-          'msg'
-        ).innerHTML = `Approve tx: <a href="${EXPLORER}/tx/${txA.hash}" target="_blank">${txA.hash}</a>`;
-        await txA.wait();
-      }
-
-      $('msg').textContent = 'Buying CPEG...';
-      const txB = await lp.buyWithUSDC(amount);
-      $(
-        'msg'
-      ).innerHTML = `Buy tx: <a href="${EXPLORER}/tx/${txB.hash}" target="_blank">${txB.hash}</a>`;
-      await txB.wait();
-
-      $('msg').innerHTML += "<br><span class='ok'>✅ Completed</span>";
+      showConnectedUI(me); // 先に UI を切り替える
       await refresh(true);
-    } catch (e) {
-      console.error('[buy] failed', e);
-      $('msg').innerHTML = `<span class="danger">Error:</span> ${
-        e?.shortMessage || e?.message || e
-      }`;
-    }
-  };
 
-  // ====== Disconnect ======
+      // イベント
+      reqProv.on?.('accountsChanged', async (a) => {
+        me = a && a[0] ? ethers.getAddress(a[0]) : null;
+        if (!me) {
+          cleanupConnection();
+        }
+        await refresh(!!me).catch(() => {});
+      });
+      reqProv.on?.('chainChanged', () => location.reload());
+      reqProv.on?.('disconnect', () => {
+        cleanupConnection();
+        refresh(false).catch(() => {});
+      });
+    } catch (e) {
+      console.error('connect error', e);
+      const el = $('msg');
+      if (el)
+        el.innerHTML = `<span class="danger">Connect error:</span> ${
+          e?.shortMessage || e?.message || e
+        }`;
+      showDisconnectedUI();
+    }
+  });
+
   function cleanupConnection() {
     signer = null;
     me = null;
-    try {
-      reqProv = null;
-    } catch {}
-    try {
-      wcProvider?.disconnect?.();
-    } catch {}
+    reqProv = null;
+    myUsdtBal = null;
     provider = new ethers.JsonRpcProvider(READ_RPCS[0]);
-    $('addr').textContent = '未接続';
-    $('net').textContent = 'Ethereum';
-    setConnUI(false);
+    showDisconnectedUI();
   }
 
-  document.getElementById('disconnect')?.addEventListener('click', async () => {
+  $('disconnectHeader')?.addEventListener('click', async () => {
     cleanupConnection();
     await refresh(false).catch(() => {});
   });
-  document.getElementById('disconnectHeader')?.addEventListener('click', () => {
-    document.getElementById('disconnect')?.click();
+
+  // ====== Buy flow ======
+  $('buy')?.addEventListener('click', async () => {
+    const msgEl = $('msg');
+    if (msgEl) msgEl.textContent = '';
+    try {
+      if (!signer) throw new Error('Please connect your wallet first.');
+      await ensureMainnet(reqProv);
+
+      const amount = parseAmount();
+      if (amount < RAW.MIN_BUY_USDT) {
+        throw new Error(
+          `Minimum purchase is ${fmt.usdt(RAW.MIN_BUY_USDT)} USDT.`
+        );
+      }
+      if (myUsdtBal != null && amount > myUsdtBal) {
+        throw new Error('You do not have enough USDT for this purchase.');
+      }
+      if (priceCache <= 0n)
+        throw new Error('Price not available. Please try again.');
+
+      const lp = new ethers.Contract(LP_ADDR, LP_ABI, signer);
+      const usdt = new ethers.Contract(USDT_ADDR, ERC20_ABI, signer);
+
+      // allowance
+      const cur = await usdt.allowance(me, LP_ADDR);
+      if (cur < amount) {
+        setTxt('msg', 'Approving USDT...');
+        const txA = await usdt.approve(LP_ADDR, amount);
+        msgEl.innerHTML = `Approve: <a target="_blank" href="${RAW.EXPLORER}/tx/${txA.hash}">${txA.hash}</a>`;
+        await txA.wait();
+      }
+
+      // buy（関数名の揺れに対応）
+      setTxt('msg', 'Buying CPEG...');
+      let txB;
+      try {
+        txB = await lp.buyWithUSDT(amount);
+      } catch {
+        txB = await lp.buyWithUSDC(amount);
+      }
+      msgEl.innerHTML = `Buy: <a target="_blank" href="${RAW.EXPLORER}/tx/${txB.hash}">${txB.hash}</a>`;
+      await txB.wait();
+      msgEl.innerHTML += "<br><span class='ok'>✅ Completed</span>";
+
+      // 残高/UI更新
+      try {
+        const roUsdt = new ethers.Contract(USDT_ADDR, ERC20_ABI, provider);
+        myUsdtBal = await roUsdt.balanceOf(me);
+        showConnectedUI(me, myUsdtBal);
+      } catch {}
+      await refresh(true);
+    } catch (e) {
+      const el = $('msg');
+      if (el)
+        el.innerHTML = `<span class="danger">Error:</span> ${
+          e?.shortMessage || e?.message || e
+        }`;
+    }
   });
 
-  // ====== 初期化 ======
-  $('year').textContent = new Date().getFullYear();
-  setConnUI(false);
-  refresh();
-  setInterval(() => refresh(!!signer).catch(() => {}), 25000);
+  // 入力変更 → 見積＆ボタン状態更新
+  getInEl()?.addEventListener('input', async () => {
+    try {
+      const lp = new ethers.Contract(LP_ADDR, LP_ABI, provider);
+      priceCache = await readPrice(lp);
+      updateQuote(priceCache);
 
-  if (window.ethereum) {
-    ethereum.on?.('chainChanged', () => location.reload());
-    ethereum.on?.('accountsChanged', async () => {
-      try {
-        provider = new ethers.BrowserProvider(window.ethereum);
-        signer = await provider.getSigner().catch(() => null);
-        me = signer ? await signer.getAddress() : null;
-        $('addr').textContent = me || '未接続';
-        setConnUI(!!me);
-        await refresh(!!me);
-      } catch {}
-    });
-  }
+      // ライブ判定で活性を更新
+      const [st, et] = await readSaleWindow(lp);
+      const now = Math.floor(Date.now() / 1000);
+      const live = st && et ? now >= Number(st) && now <= Number(et) : false;
+      updateBuyButton(live);
+    } catch {
+      /* noop */
+    }
+  });
 
-  console.log(
-    '[boot] ethers',
-    ethers.version,
-    'LP',
-    LP_ADDR,
-    'USDC',
-    USDC_ADDR
-  );
+  // ====== Boot ======
+  (function boot() {
+    const y = $('year');
+    if (y) y.textContent = new Date().getFullYear();
+    showDisconnectedUI(); // 初期は未接続表示
+    refresh(false);
+    setInterval(() => refresh(!!signer).catch(() => {}), 25000);
+
+    if (window.ethereum) {
+      // 既に MetaMask があれば監視だけ先に張っておく
+      window.ethereum.on?.('chainChanged', () => location.reload());
+      window.ethereum.on?.('accountsChanged', async (a) => {
+        me = a && a[0] ? ethers.getAddress(a[0]) : null;
+        if (!me) cleanupConnection();
+        await refresh(!!me).catch(() => {});
+      });
+    }
+
+    console.log(
+      '[boot] ethers',
+      ethers.version,
+      '| LP',
+      LP_ADDR,
+      '| USDT',
+      USDT_ADDR
+    );
+  })();
 })();

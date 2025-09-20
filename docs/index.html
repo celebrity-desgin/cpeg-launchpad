@@ -9,181 +9,310 @@
     <meta name="color-scheme" content="dark light" />
     <link href="img/favicon.ico" rel="shortcut icon" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="stylesheet" href="./css/style.css?v=1" />
+    <link rel="stylesheet" href="./css/style.css?v=11" />
+
+    <!-- 最終オーバーライド（余白/配置の仕上げ） -->
+    <style>
+      /* ===== 1ページ固定レイアウト ===== */
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        overflow-y: hidden; /* スクロールなし */
+      }
+      .main {
+        flex: 1;
+        display: flex;
+      }
+      /* .wrap は高さを強制しない（空白の原因になるため） */
+      .wrap {
+        flex: 1;
+        display: block !important;
+        min-height: auto !important;
+      }
+
+      /* ===== Top bar ===== */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(6px);
+        background: rgba(8, 12, 24, 0.55);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .topbar-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 8px 16px; /* 少し詰める */
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .brand-title {
+        font-weight: 700;
+        color: #cfe2ff;
+      }
+
+      /* ===== Hero（タイトル〜カウントダウン）===== */
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      .hero {
+        text-align: center;
+        font-size: 32px;
+        font-weight: 800;
+        margin: 10px 0 4px;
+      }
+      .hero-times {
+        display: flex;
+        justify-content: center;
+        gap: 22px;
+        margin: 0 auto 8px;
+        color: #cfd6ff;
+        font-weight: 700;
+      }
+      .hero-times .sep {
+        position: relative;
+        padding-left: 18px;
+      }
+      .hero-times .sep::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        width: 1px;
+        height: 14px;
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-50%);
+      }
+
+      /* カウントダウン4枠を均等・横長に */
+      #cdWrap {
+        margin: 0 !important;
+      }
+      .cd-rings {
+        width: 100%;
+        max-width: 1100px !important;
+        margin: 8px auto 10px !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(220px, 1fr)) !important;
+        gap: 22px !important;
+      }
+      .cd-item {
+        background: var(--panel2) !important;
+        border: 1px solid var(--stroke) !important;
+        border-radius: 14px !important;
+        padding: 12px 16px !important;
+        min-height: 86px !important;
+        text-align: center;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+      }
+      .cd-ring,
+      .cd-ring::after {
+        all: unset !important;
+      }
+      .cd-num {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0.3px;
+      }
+      .cd-lab {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: capitalize;
+        letter-spacing: 0.08em;
+      }
+      .cd-lab::before {
+        content: '';
+        display: block;
+        width: 30px;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.16);
+        margin: 8px auto 6px;
+        border-radius: 1px;
+      }
+
+      /* ===== 購入ボックス ===== */
+      .buy-section {
+        margin-top: 42px;
+      }
+      @media (max-width: 600px) {
+        .buy-section {
+          margin-top: 46px;
+        }
+      }
+      .cd-rings {
+        margin: 8px auto 10px !important;
+      }
+      .buy-legend {
+        text-align: center;
+        margin: 6px 0;
+        color: #cfd6ff;
+        font-weight: 600;
+      }
+      /* 縦積み＋中央寄せ */
+      .buy-row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        width: min(420px, 92vw);
+        margin: 0 auto;
+        gap: 10px;
+      }
+      #usdcIn {
+        width: 100%;
+        min-height: 44px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #0b0f22;
+        color: #fff;
+        border: 1px solid #232a4e;
+        outline: none;
+      }
+      #usdcIn:focus {
+        border-color: var(--accent1);
+        box-shadow: 0 0 0 3px rgba(122, 162, 255, 0.22);
+      }
+      #buy {
+        width: 100%;
+        padding: 12px 16px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        color: #fff;
+        background: linear-gradient(180deg, var(--accent1), var(--accent2));
+        border: none;
+        border-radius: 12px;
+      }
+      .msg {
+        margin-top: 6px;
+        text-align: center;
+      }
+
+      /* ===== フッター ===== */
+      .foot {
+        padding: 12px 0 24px;
+      }
+
+      /* モバイル */
+      @media (max-width: 600px) {
+        .hero {
+          font-size: 26px;
+        }
+        .cd-rings {
+          grid-template-columns: repeat(2, minmax(140px, 1fr)) !important;
+          gap: 14px !important;
+        }
+      }
+    </style>
   </head>
+
   <body>
-    <div class="wrap">
-      <div class="brand">
-        <div class="brand-left">
-          <span class="brand-bullet"></span>
-          <h1>CPEG Launchpad</h1>
-        </div>
-        <div class="brand-right">
-          <button id="connect" class="btn orange">Connect Wallet</button>
-          <button id="disconnectHeader" class="btn btn-alt" hidden>
-            Disconnect
-          </button>
-          <a
-            id="openInMM"
-            class="link-like"
-            style="display: none"
-            href="#"
-            rel="noopener"
-          >
-            Open in MetaMask
-          </a>
-        </div>
-      </div>
+    <div id="bg-net" aria-hidden="true"></div>
+    <!-- ===== Top bar ===== -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-title"></div>
 
-      <section class="card">
-        <h2>Copper Peg Coin (CPEG) Presale</h2>
-        <p class="muted tight">
-          USDC を使って CPEG
-          を購入できます。販売期間内のみ購入可能です。ウォレットを
-          <strong>Ethereum</strong> に切り替えて接続してください。
-        </p>
-
-        <div class="subttl">現在の情報</div>
-        <div class="grid">
-          <div class="box">
-            <h3>Phase</h3>
-            <div id="phase" class="mono">-</div>
-            <div class="hint">now: <span id="now" class="mono">-</span></div>
-          </div>
-          <div class="box">
-            <h3>Price (USDC)</h3>
-            <div class="mono"><span id="price">-</span></div>
-            <div class="hint">per 1 CPEG (18d)</div>
-          </div>
-          <div class="box">
-            <h3>Window</h3>
-            <div class="mono">
-              <span id="st">--</span> → <span id="et">--</span>
-            </div>
-          </div>
-
-          <div class="box">
-            <h3>LP&nbsp;USDC</h3>
-            <div class="mono" id="lpUsdc">-</div>
-          </div>
-          <div class="box">
-            <h3>LP&nbsp;Token</h3>
-            <div class="mono long" id="lpTok">-</div>
-          </div>
-          <div class="box">
-            <h3>Funds Wallet</h3>
-            <div class="mono long" id="funds">-</div>
-          </div>
-        </div>
-
-        <div class="subttl">トークンについて</div>
-        <p class="muted tight">
-          CPEG は 18 桁小数の ERC-20 トークンです。販売 UI
-          はスマートコントラクト
-          <span id="lpAddr" class="mono">-</span>
-          と直接やり取りします。価格・期間・回収等はコントラクトの状態をそのまま表示しています。
-        </p>
-      </section>
-
-      <section class="card" id="cdWrap" aria-live="polite">
-        <h2 id="cdHeading">Token sale schedule</h2>
-
-        <div class="cd-rings">
-          <div class="cd-item">
-            <div class="cd-ring" id="cdDaysRing" style="--p: 100">
-              <div class="cd-num" id="cdDays">0</div>
-            </div>
-            <div class="cd-lab">days</div>
-          </div>
-          <div class="cd-item">
-            <div class="cd-ring" id="cdHoursRing" style="--p: 0">
-              <div class="cd-num" id="cdHours">0</div>
-            </div>
-            <div class="cd-lab">hours</div>
-          </div>
-          <div class="cd-item">
-            <div class="cd-ring" id="cdMinsRing" style="--p: 0">
-              <div class="cd-num" id="cdMins">0</div>
-            </div>
-            <div class="cd-lab">minutes</div>
-          </div>
-          <div class="cd-item">
-            <div class="cd-ring" id="cdSecsRing" style="--p: 0">
-              <div class="cd-num" id="cdSecs">0</div>
-            </div>
-            <div class="cd-lab">seconds</div>
-          </div>
-        </div>
-
-        <div class="cd-cta">
-          <button id="cdAction" class="btn">Buy now</button>
-        </div>
-
-        <div class="cd-prog">
-          <div class="cd-prog-bar" id="cdProgBar" style="width: 0%"></div>
-        </div>
-
-        <div class="hint tight">
-          Window: <span id="cdSt">--</span> → <span id="cdEt">--</span>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Buy CPEG</h2>
-        <div class="box">
-          <div class="space-between">
-            <div class="mono long" id="addr">未接続</div>
-            <button id="disconnect" class="btn btn-alt" hidden>
+        <div class="topbar-actions">
+          <!-- 接続後に表示されるステータス -->
+          <div id="tb" class="topbar-status" style="display: none">
+            <span id="tbAddr" class="pill pill-addr mono">0x…</span>
+            <span id="tbUsdt" class="pill pill-usdt mono">0 USDT</span>
+            <button id="disconnectHeader" class="btn btn-alt btn-sm">
               Disconnect
             </button>
           </div>
-          <div class="hint tight">Network: <span id="net">Ethereum</span></div>
+
+          <!-- 未接続時／接続ボタン -->
+          <button id="connect" class="btn orange">Connect Wallet</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== Main ===== -->
+    <main class="main">
+      <div class="wrap">
+        <h1 class="hero">Copper Peg Coin&nbsp;&nbsp;Presale</h1>
+
+        <!-- Start / Close（UTC）-->
+        <div class="hero-times">
+          <div>Start <span id="cdSt">--</span> (UTC)</div>
+          <div class="sep">Close <span id="cdEt">--</span> (UTC)</div>
         </div>
 
-        <div class="box">
-          <h3>USDC</h3>
-          <div class="row">
+        <!-- Countdown -->
+        <section id="cdWrap" aria-live="polite">
+          <div class="cd-rings">
+            <div class="cd-item">
+              <div class="cd-ring" id="cdDaysRing">
+                <div class="cd-num" id="cdDays">0</div>
+              </div>
+              <div class="cd-lab">Days</div>
+            </div>
+            <div class="cd-item">
+              <div class="cd-ring" id="cdHoursRing">
+                <div class="cd-num" id="cdHours">0</div>
+              </div>
+              <div class="cd-lab">Hours</div>
+            </div>
+            <div class="cd-item">
+              <div class="cd-ring" id="cdMinsRing">
+                <div class="cd-num" id="cdMins">0</div>
+              </div>
+              <div class="cd-lab">Minutes</div>
+            </div>
+            <div class="cd-item">
+              <div class="cd-ring" id="cdSecsRing">
+                <div class="cd-num" id="cdSecs">0</div>
+              </div>
+              <div class="cd-lab">Seconds</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Purchase -->
+        <section class="buy-section">
+          <div class="buy-legend">Please enter the amount of USDT</div>
+          <div class="row buy-row">
             <input
-              id="usdcIn"
+              id="usdtIn"
               type="number"
               inputmode="decimal"
-              placeholder="50"
-              min="0"
+              placeholder="1,000"
+              min="1000"
               step="1"
             />
-            <button id="buy" class="btn" disabled>Buy</button>
+            <button id="buy" class="btn" disabled>Buy with USDT</button>
           </div>
-          <div class="hint tight">
-            見積: <span id="quote" class="mono">0.0</span> CPEG
+          <div class="hint tight" style="text-align: center">
+            Quotation: <span id="quote" class="mono">-</span> CPEG
           </div>
-        </div>
+          <div id="msg" class="mono msg"></div>
+        </section>
+      </div>
+    </main>
 
-        <div class="grid">
-          <div class="box">
-            <h3>My CPEG</h3>
-            <div id="myCpeg" class="mono">-</div>
-          </div>
-          <div class="box">
-            <h3>My USDC</h3>
-            <div id="myUsdc" class="mono">-</div>
-          </div>
-          <div class="box">
-            <h3>Allowance to LP</h3>
-            <div id="allow" class="mono">-</div>
-          </div>
-        </div>
+    <!-- ===== Footer ===== -->
+    <footer class="foot">
+      <nav class="foot-links">
+        <a href="./privacy.html">Privacy Policy</a>
+        <span class="dot">•</span>
+        <a href="mailto:toiawase520@gmail.com">Contact Us</a>
+      </nav>
+      <div class="copy">© <span id="year"></span> Copper Peg Coin</div>
+    </footer>
 
-        <p class="hint tight">
-          トランザクションは Etherscan で確認できます。<br />
-          Approve → Buy の 2 段階で進みます（必要な金額のみ承認）。
-        </p>
-
-        <div id="msg" class="mono"></div>
-      </section>
-
-      <div class="foot">© <span id="year"></span> Copper Peg Coin</div>
-    </div>
-
+    <!-- libs -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2/dist/style.css"
@@ -196,6 +325,9 @@
       defer
       src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.umd.min.js"
     ></script>
-    <script defer src="./js/app.js?v=3"></script>
+    <!-- Animated background (tsParticles) -->
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@3/tsparticles.bundle.min.js"></script>
+    <script defer src="./js/bg-net.js?v=1"></script>
+    <script defer src="./js/app.js?v=19"></script>
   </body>
 </html>
